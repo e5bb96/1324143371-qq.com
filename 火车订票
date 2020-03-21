@@ -1,0 +1,687 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <windows.h>
+
+#define HEADER1 "----------------------------------BOOK TICKET----------------------------------\n"
+#define HEADER2 "| number |start city|reach city|take off time|receive time|price|ticket number|\n"
+#define HEADER3 "|--------|----------|----------|-------------|------------|-----|-------------|\n"
+#define LAST    "-------------------------------------------------------------------------------\n"
+#define FORMAT "|%-8d|%-10s|%-10s|%-13s|%-12s|%-5d|%-13d|\n"  //format(格式)
+#define DATA p->data.num,p->data.startcity,p->data.reachcity,p->data.takeofftime,p->data.receivetime,p->data.price,p->data.ticketnumber
+
+typedef struct Man *bookLink;
+typedef struct node *Link;
+typedef struct SNode *Stack;  //stack(厢，盒子,堆)
+
+int trainflag = 1;		//存储标志
+int numflag = 0;   //当存在相同火车票时为1
+
+struct train {//火车信息
+	int num;
+	char startcity[15];
+	char reachcity[15];
+	char takeofftime[10];
+	char receivetime[10];
+	int price;
+	int ticketnumber;
+};
+
+struct SNode {//堆栈
+	Link data;
+	Stack next;
+};
+
+struct node { //二叉树
+	struct train data;
+	Link left, right;
+};
+
+struct Man
+{
+	struct man
+	{
+		char num[16];
+		char name[10];
+	}Data;
+	struct train data;
+	bookLink next;
+};
+
+void printfheader()
+{
+	printf(HEADER1); printf(HEADER2); printf(HEADER3);
+}
+
+int Continue()
+{
+	char sel;
+//	setbuf(stdin, NULL); // 使stdin輸入流由默認緩衝區轉為無緩衝區              <---------     不支持中文
+	while (1) {
+		rewind(stdin);
+		scanf("%c", &sel);
+		if (sel == 'y' || sel == 'Y') return 1;
+		else if (sel == 'n' || sel == 'N') return 0;
+		else printf(" Input error! please again push!\n");
+	}
+}
+
+void Push(Link p, Stack S) {  //插入堆栈
+	Stack TmpCell;   //tmp(暂时的)cell(细胞，牢房)
+	TmpCell = (Stack)malloc(sizeof(struct SNode));
+	TmpCell->data = p;
+	TmpCell->next = S->next;
+	S->next = TmpCell;
+}
+
+Link FindMin(Link BST){
+	if (!BST) return NULL;
+	else if (!BST->left) return BST;
+	else return FindMin(BST);
+
+}
+
+void Deleteselection() {
+	printf("\t1：Query information and delete\n");
+	printf("\t2：Again delete\n");
+	printf("\t3：Cancel operation\n");
+	printf("\nplease choose <1~3>：");
+}
+
+Link Delete(int i, Link BST) {
+	Link p;
+	if (BST==NULL) { printf("no data\n"); numflag = 1; }
+	else if (i > BST->data.num) { BST->right = Delete(i, BST->right);  }
+	else if (i < BST->data.num) { BST->left = Delete(i, BST->left); }
+	else {
+		if (BST->left && BST->right) {
+			p = FindMin(BST->right);
+			BST->data.num = p->data.num;
+			strcpy(BST->data.startcity, p->data.startcity);
+			strcpy(BST->data.reachcity, p->data.reachcity);
+			strcpy(BST->data.takeofftime, p->data.takeofftime);
+			strcpy(BST->data.receivetime, p->data.receivetime);
+			BST->data.price = p->data.price;
+			BST->data.ticketnumber = p->data.ticketnumber;
+			BST->right = Delete(BST->data.num, BST->right);
+		}
+		else {
+			p = BST;
+			if (!BST->left) BST = BST->right;
+			else if (!BST->right) BST = BST->left;
+			else if (!BST->left && !BST->right) BST = NULL;
+			free(p);
+		}
+	}
+		return BST;
+}
+
+Link Pop(Stack S) {  //出栈
+	Stack D;
+	Link p;
+	if (S->next == NULL) return NULL;
+	else {
+		D = S->next;
+		S->next = D->next;
+		p = D->data;
+		return p;
+	}
+}
+
+Link FindBST(Link BST, int i) {
+	while (BST)
+	{
+		if (i < BST->data.num) BST = BST->left;
+		else if (i > BST->data.num) BST = BST->right;
+		else return BST;
+	}
+	return BST;
+}
+
+Link Insert(Link BST, int i) {
+	if (!BST) {
+		BST = (Link)malloc(sizeof(struct node));
+		BST->data.num = i;
+		printf("\nInput the city where the train will start：");
+		scanf("%s", BST->data.startcity);
+		printf("\nInput the city where the train will reach：");
+		scanf("%s", BST->data.reachcity);
+		printf("\nInput the time which the train take off：");
+		scanf("%s", BST->data.takeofftime);
+		printf("\nInput the time where the train receive：");
+		scanf("%s", BST->data.receivetime);
+		printf("\nInput the price of ticket：");
+		scanf("%d", &BST->data.price);
+		printf("\nInput the number of booked tickets：");
+		scanf("%d", &BST->data.ticketnumber);
+		BST->left = BST->right = NULL;
+	}
+	else if (i < BST->data.num) BST->left = Insert(BST->left, i);
+	else if (i > BST->data.num) BST->right = Insert(BST->right, i);
+	else if (i == BST->data.num) numflag = 1;
+	return BST;
+}
+
+Link In(Link p, Link BST) {
+	if (!BST) return p;
+	else if (p->data.num > BST->data.num) BST->right = In(p, BST->right);
+	else if (p->data.num < BST->data.num) BST->left = In(p, BST->left);
+	return BST;
+}
+
+void Menu()
+{
+	printf("\n\n");
+	printf("\t\t|------------------------------------------|\n");
+	printf("\t\t|             Booking Tickets              |\n");
+	printf("\t\t|------------------------------------------|\n");
+	printf("\t\t|      0:quit the system                   |\n");
+	printf("\t\t|      1:Insert a train information        |\n");
+	printf("\t\t|      2:Search a train infoemation        |\n");
+	printf("\t\t|      3:Book a train ticket               |\n");
+	printf("\t\t|      4:Mondify the train information     |\n");
+	printf("\t\t|      5:Mondify user ID or NAME           |\n");
+	printf("\t\t|      6:Show the train information        |\n");
+	printf("\t\t|      7:Show the book information         |\n");
+	printf("\t\t|      8:Delete train data                 |\n");
+	printf("\t\t|      9:Delete Book ticket data           |\n");
+	printf("\t\t|      10:save information to file         |\n");
+	printf("\t\t|------------------------------------------|\n\n");
+	return;
+}
+
+void Newtrain(Link p) {
+	printf("Input the new city where the train will start:");
+	scanf("%s", p->data.startcity);
+	printf("Input the new city where the train will reach:");
+	scanf("%s", p->data.reachcity);
+	printf("Input the new time which the train take off:");
+	scanf("%s", p->data.takeofftime);
+	printf("Input the new time where the train receive:");
+	scanf("%s", p->data.receivetime);
+	printf("Input the new price of ticket:");
+	scanf("%d", &p->data.price);
+	printf("Input the new number of booked tickets:");
+	scanf("%d", &p->data.ticketnumber);
+}
+
+void Serachtrain(Link BST) {
+	Stack S;
+	Link p;
+	int num, sel;
+	char str[10];
+	if (BST == NULL) { printf("There is not any record!"); return; }
+	S = (Stack)malloc(sizeof(struct SNode));
+	S->next = NULL;
+	while (1) {
+		printf("Choose the way:\n\n\n1:according to the number of tarin;\n2:according to the city:\n");
+		scanf("%d", &sel);
+		if (sel == 1) {
+			printf("please input the number of train(0->retrun)");
+			scanf("%d", &num);
+			if (num == 0) return;
+			p = FindBST(BST, num);
+			if (p) { printfheader(); printf(FORMAT, DATA); printf(LAST); }
+			else printf("nothing\n");
+			printf("\nWhether to continue the search?<y/n>\n");
+			sel = Continue(); if (sel == 0) break;
+		}
+		if (sel == 2) {
+			printf("Input the city you want to go:");
+			scanf("%s", str);
+			p = BST;
+			printfheader();
+			while (p || S->next != NULL) {
+				while (p) {
+					Push(p, S);
+					p = p->left;
+				}
+				if (S->next != NULL) {
+					p = Pop(S);
+					if (strcmp(str, p->data.reachcity) == 0) {
+						printf(FORMAT, DATA);
+					}
+					p = p->right;
+				}
+			}
+			printf(LAST);
+			printf("\nWhether to continue the search?<y/n>\n");
+			sel = Continue(); if (sel == 0) break;
+		}
+	}
+	free(S);
+	return;
+}
+
+Link Traininfo(Link BST) {			//插入火车信息
+	void Modify(Link BST);
+	int i;
+	while (1)
+	{
+		printf("\nPlease enter the train number you want to inquire about(0->retrun)：");			//输入火车号（0为退出）
+		scanf("%d", &i);
+		if (i == 0) return BST;
+		BST = Insert(BST, i);			// 火车信息根据二叉树规则插入
+		if (numflag) {			//numflag 判断是否已经存在该车号的标志,值为1为存在
+			printf("the train '%d'is existing!\n", i);
+			numflag = 0;
+			printf("\nDo you want to modify it?<y/n>\n");
+			i = Continue();
+			if (i == 0) return BST;
+			else Modify(BST);
+			return BST;
+		}
+		trainflag = 0;
+	}
+}
+
+void Bookticket(Link BST, bookLink b) {		//订购火车票
+	void Showtrain(Link BST);
+	char str[10], ch;
+	int num = 0, i, carnum, dnum;
+	Stack S = (Stack)malloc(sizeof(struct SNode));
+	Link p = BST, New[10];
+	bookLink h;
+	S->next = NULL;
+	printf("Input the city you want to go:");	//输入你要去的地方
+	scanf("%s", str);
+	printfheader();
+	p = BST;
+	while (p || S->next != NULL) {			//入栈出栈
+		while (p) {
+			Push(p, S);
+			p = p->left;
+		}
+		if (S->next != NULL) {
+			p = Pop(S);
+			if (strcmp(str, p->data.reachcity) == 0) {
+				printf(FORMAT, DATA);
+				New[num] = p;
+				num++;				//根据要到的地点找到对应火车的个数
+			}
+			p = p->right;
+		}
+	}
+	printf(LAST);
+	if (num == 0) { printf("\nSorry!Can't find the train for you!\n"); 
+	printf("Whether to query all train information<y/n>\n"); i=Continue();		
+	if (i == 0)return; else { Showtrain(BST); Bookticket(BST,b); }
+	}
+	else {
+		printf("\nDo you want to book it?<y/n>\n");
+		//setbuf(stdin, NULL); // 使stdin輸入流由默認緩衝區轉為無緩衝區（不支持中文）
+		rewind(stdin);		//支持中文的清楚缓存区
+		scanf("%c", &ch);
+		if (ch == 'y' || ch == 'Y') {
+			h = (bookLink)malloc(sizeof(struct Man));
+			h->next = NULL;
+			printf("Input your name：");	
+			scanf("%s", h->Data.name);
+			printf("Input your id：");
+			scanf("%s", h->Data.num);
+			while (1) {
+				printf("please input the number of the train：");
+				scanf("%d", &carnum);
+				for (i = 0; i < num; i++)
+					if (carnum == New[i]->data.num) {
+						//在VC中，Sleep()裡面的單位，是以毫秒為單位，所以如果想讓函數滯留1秒的話，應該是Sleep(1000); 在Linux下,sleep()裡面的單位是秒，而不是毫秒。
+						if (New[i]->data.ticketnumber == 0) { printf("sorry,no ticket!\n"); Sleep(1000); return; }
+						printf("remain %d tickets\n", New[i]->data.ticketnumber);
+						printf("Input your bookNum：");
+						scanf("%d", &dnum);
+						New[i]->data.ticketnumber = New[i]->data.ticketnumber - dnum;		//将火车的信息录入到购票人资料中
+						h->data.num = New[i]->data.num;
+						strcpy(h->data.startcity, New[i]->data.startcity);
+						strcpy(h->data.reachcity, New[i]->data.reachcity);
+						strcpy(h->data.takeofftime, New[i]->data.takeofftime);
+						strcpy(h->data.receivetime, New[i]->data.receivetime);
+						h->data.price = New[i]->data.price;
+						h->data.ticketnumber = dnum;
+						i = num+1;
+					}
+				if (i == num) printf("Typing error, no such car number\n");
+				else break;
+			}
+			h->next = b->next;
+			b->next = h;
+			free(S);
+			printf("Lucky!you have booked a ticket!\n");
+			getchar();
+			trainflag = 0;			//信息修改标志，0为修改过
+		}
+	}
+}
+
+void Modify(Link BST) {		//修改火车信息
+	int num;
+	int i;
+	Link p;
+	if (!BST) {
+		printf("\nthere isn't record for you to modify!\n");
+		return;
+	}
+	while (1) {
+		printf("\nInput the number of the train：<0->return>\n");
+		scanf("%d", &num);
+		if (num == 0) return;
+		p = FindBST(BST, num);		//根据火车号查找对应结点
+		if (p) {
+			printfheader();
+			printf(FORMAT, DATA);
+			printf(LAST);
+			printf("Input new number of train：");
+			scanf("%d", &p->data.num);
+			Newtrain(p);		//输入新的火车信息
+			trainflag = 0;
+			printf("Successfully modified!\n");
+		}
+		else {
+			printf("\tcan't find the record!\n");
+			printf("\nWhether to query all train information<y/n>\n"); i = Continue();
+			if (i == 0)return; else {
+				Showtrain(BST);
+				printf("Whether to continue to modify<y/n>\n");
+				num = Continue();
+				if (num == 0) return;
+			}
+		}
+	}
+}
+
+void Modifybook(bookLink b) {		//修改购票人信息
+	void Showbook(bookLink b);
+	bookLink t=b;
+	char ch[18];
+	int i;
+	if (b->next == NULL) { printf("Books ticket information is not any record!\n"); return; }
+	Showbook(b);
+	printf("Please enter the user ID to be modified：");
+		rewind(stdin);
+	scanf("%s", ch);
+	b = b->next;
+	while (b != NULL) {
+		if (strcmp(b->Data.num, ch) == 0) {
+			printf("Input your new name：");
+			scanf("%s", b->Data.name);
+			printf("Input your new id：");
+			scanf("%s", b->Data.num);
+			printf("Successfully modified!\n");
+			trainflag = 0;
+			return;
+		}
+			b = b->next;
+	}
+	if (b == NULL) {
+		printf("\tcan't find the record!\n");
+		printf("\nWhether to query again<y/n>\n"); i = Continue();
+		if (i == 0) return;
+		else Modifybook(t);
+	}
+}
+
+void Showtrain(Link BST) {   //展现火车信息
+	Stack S = (Stack)malloc(sizeof(struct SNode));
+	Link p = BST;
+	S->next = NULL;
+	if (!BST) {
+		printf("There is not any record!\n");
+		return;
+	}
+	printfheader();
+	while (p || S->next != NULL) {
+		while (p) {
+			Push(p, S);
+			p = p->left;
+		}
+		if (S->next != NULL) {
+			p = Pop(S);
+			printf(FORMAT, DATA);
+			p = p->right;
+		}
+	}
+	printf(LAST);
+	free(S);
+}
+
+void Showbook(bookLink b) {		//展现订票信息
+	bookLink p;
+	p = b->next;
+	if (p == NULL) { printf("There is not any record!\n"); return; }
+	while (p != NULL) {
+		printf("name：%s\t\tID：%s\n", p->Data.name, p->Data.num);
+		printfheader();
+		printf(FORMAT, DATA);
+		p = p->next;
+		printf(LAST);
+	}
+}
+
+void Savetrain(Link BST)	//保存火车信息
+{
+	FILE *fp;
+	int flag = 1, count = 0;
+	Stack S = (Stack)malloc(sizeof(struct SNode));
+	S->next = NULL;
+	if (!BST) {
+		printf("Train information is not any record!\n");
+		return;
+	}
+	fp = fopen("e:\\max.txt", "w+");
+	if (fp == NULL) {
+		printf("the file can't be opened!");
+		return;
+	}
+	while (BST || S->next != NULL) {
+		while (BST) {
+			Push(BST, S);
+			if (fprintf(fp, "%d %s %s %s %s %d %d\n", BST->data.num, BST->data.startcity, BST->data.reachcity, BST->data.takeofftime, BST->data.receivetime, BST->data.price, BST->data.ticketnumber) != 3)
+			count++;
+			else { flag = 0; break; break; }
+			BST = BST->left;
+		}
+		if (S->next != NULL) {
+			BST = Pop(S);
+		}
+		BST = BST->right;
+	}
+		if (flag) {
+			printf("saveed %d train records\n", count);
+			trainflag = 1;			//保存标志
+		}
+	fclose(fp);
+}
+
+void Savebook(bookLink p)		//保存订票信息
+{
+	FILE *fp;
+	int count = 0, flag = 1;
+	if (!p->next) { printf("Books ticket information is not any record!\n"); return; }         //判断是否为空
+	fp = fopen("e:\\man.txt", "wb");
+	if (fp == NULL)
+	{
+		printf("the file can't be opened");
+		return;
+	}
+	p = p->next;       //头指针为空指针
+	while (p)
+	{
+		if (fwrite(p, sizeof(struct Man), 1, fp) == 1) {
+			p = p->next;
+			count++;
+		}
+		else {
+			flag = 0; break;		//fwrite是否写入成功标志，失败时赋值为0
+		}
+	}
+	if (flag) {		
+		printf("saved %d booking records\n", count);
+		trainflag = 1;
+	}
+	fclose(fp);
+}
+
+Link readtrain(Link BST) {		//读取火车信息
+	FILE *fp;
+	Link p;
+	fp = fopen("e:\\max.txt", "ab+");
+	if (fp == NULL) { printf("can't open the file!\n"); return 0; }
+	while (!feof(fp)) {
+		p = (Link)malloc(sizeof(struct node));
+		if (fscanf(fp, "%d %s %s %s %s %d %d\n", &p->data.num, p->data.startcity, p->data.reachcity, p->data.takeofftime, p->data.receivetime, &p->data.price, &p->data.ticketnumber) != 3) {
+			p->left = p->right = NULL;
+			if (BST == NULL) { BST = p; }
+			else BST = In(p, BST);
+		}
+		else free(p);
+	}
+	fclose(fp);
+	return BST;
+}
+
+bookLink readbook(bookLink b) {		//读取订票信息
+	FILE *fp;
+	bookLink t;
+	fp = fopen("e:\\man.txt", "ab+");
+	if (fp == NULL) {
+		printf("can't open the file\n");
+		return 0;
+	}
+	while (!feof(fp))
+	{
+		t = (bookLink)malloc(sizeof(struct Man));
+		if (fread(t, sizeof(struct Man), 1, fp) == 1) {
+			t->next = b->next;
+			b->next = t;
+		}
+		else free(t);
+	}
+	fclose(fp);
+	return b;
+}
+
+void DeleteBST(Link BST) {		//删除火车信息
+	int i,num;
+	if (!BST) {
+		printf("There is not any record!\n");
+		return;
+	}
+	printf("Please enter the train number you want to delete：\n");
+	rewind(stdin);
+	scanf("%d", &num);
+	Delete(num, BST);	 //Delete()根据二叉树特点进行结点删除的函数
+	if (numflag == 1) {		//numflag为是否存在所输入火车号结点的标志，1为不存在
+		numflag = 0;
+		while (1) {
+			Deleteselection();		
+			scanf("%d", &i);
+			if (i == 1) { Showtrain(BST); DeleteBST(BST); return; }
+			else if (i == 2) { DeleteBST(BST); return; }
+			else if (i == 3) return;
+			else printf(" Input error! please again push!\n");
+		}
+	}
+	else {
+		printf("successfully deleted!\n");
+		trainflag = 0;
+		return;
+	}
+}
+
+void Deletebook(bookLink b) {			//删除订购人信息
+	char ch[18];
+	bookLink t,head;
+	int i;
+	head = b;
+	if (!b->next) {
+		printf("There is not any record!\n");
+		return;
+	}
+	printf("Please enter the uesr ID you want to delete：\n");
+	scanf("%s", ch);
+	while (b->next != NULL) {
+		if (strcmp(ch, b->next->Data.num) == 0) {
+			t = b->next;
+			b->next = t->next;
+			t->next = NULL;
+			free(t);
+			printf("successfully deleted!\n");
+			trainflag = 0;
+			return;
+		}
+		b = b->next;
+	}
+	if (b->next == NULL) {
+		while (1) {
+			printf("no data\n");
+			Deleteselection();
+			scanf("%d", &i);
+			if (i == 1) { Showbook(head); Deletebook(head); return; }
+			else if (i == 2) { Deletebook(head); return; }
+			else if (i == 3) return;
+			else printf(" Input error! please again push!\n");
+		}
+	}
+}
+
+void function(Link BST, bookLink b) {
+	int i, sel;
+	char ch;
+	while (1) {
+		Menu();
+		sel = -1;
+//		setbuf(stdin, NULL); // 使stdin輸入流由默認緩衝區轉為無緩衝區
+		rewind(stdin);
+		puts("\tplease choose <0~10>");
+		scanf("%d", &sel);
+		system("CLS");			//清屏
+		if (sel == 0) {
+			if (trainflag == 0) {
+				getchar();
+				printf("The file have changed!do you want to save it <y/n>?\n");
+				scanf("%c", &ch);
+				if (ch == 'y' || ch == 'Y') { Savebook(b); Savetrain(BST); }
+			}
+			printf("Thank you!You are welcome too!\n");
+			break;
+		}
+		switch (sel)
+		{
+		case 1:BST = Traininfo(BST); break;
+		case 2:Serachtrain(BST); break;
+		case 3:Bookticket(BST, b); break;
+		case 4:Modify(BST); break;
+		case 5:Modifybook(b); break;
+		case 6:Showtrain(BST); break;
+		case 7:Showbook(b); break;
+		case 8:DeleteBST(BST); break;
+		case 9:Deletebook(b); break;
+		case 10:Savetrain(BST); Savebook(b); break;
+		default:printf("error \n");
+		}
+		printf("\n\nAre you continue to select function?<y/n>\n");
+		i = Continue();
+		if (i == 0) {
+			if (trainflag == 0) {
+				getchar();
+				printf("The file have changed!do you want to save it <y/n>?\n");
+				scanf("%c", &ch);
+				if (ch == 'y' || ch == 'Y') { Savebook(b); Savetrain(BST); }
+			}
+			printf("\nThank you!You are welcome too!\n");
+			break;
+		}
+	}
+}
+
+int main()
+{
+	Link BST = NULL;
+	bookLink b;
+	b = (bookLink)malloc(sizeof(struct Man));
+	b->next = NULL;
+	BST = readtrain(BST);
+	b = readbook(b);
+	function(BST, b);
+	return 0;
+}
+
